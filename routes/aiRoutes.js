@@ -1,9 +1,6 @@
-const router = require("express").Router()
-const multer = require("multer")
-const upload = multer()
+const router = require("express").Router();
+const { analyze } = require("../controllers/aiController");
 
-const { analyze } = require("../controllers/aiController")
+router.post("/analyze", analyze);
 
-router.post("/analyze", upload.single("cv"), analyze)
-
-module.exports = router
+module.exports = router;

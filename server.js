@@ -1,33 +1,49 @@
-require("dotenv").config()
+require("dotenv").config();
 
-const express = require("express")
-const cors = require("cors")
-const helmet = require("helmet")
-const rateLimit = require("express-rate-limit")
+const express = require("express");
+const cors = require("cors");
+const helmet = require("helmet");
+const rateLimit = require("express-rate-limit");
 
-const authRoutes = require("./routes/authRoutes")
-const jobRoutes = require("./routes/jobRoutes")
-const aiRoutes = require("./routes/aiRoutes")
-const applicationRoutes = require("./routes/applicationRoutes")
+const jobRoutes = require("./routes/jobRoutes");
+const aiRoutes = require("./routes/aiRoutes");
+const applicationRoutes = require("./routes/applicationRoutes");
 
-const app = express()
+const app = express();
 
-app.use(cors())
-app.use(express.json())
-app.use(helmet())
+// ======================
+// MIDDLEWARE GLOBAL
+// ======================
+app.use(helmet()); // security headers — paling atas
+app.use(cors({ origin: "*" }));
+app.use(express.json()); // parse req.body JSON
 
+// ======================
+// RATE LIMIT
+// ======================
 const limiter = rateLimit({
- windowMs: 15 * 60 * 1000,
- max: 100
-})
+  windowMs: 15 * 60 * 1000,
+  max: 100,
+});
+app.use(limiter);
 
-app.use(limiter)
+// ======================
+// TEST ROUTE
+// ======================
+app.get("/", (req, res) => {
+  res.send("API Running 🚀");
+});
 
-app.use("/api/auth", authRoutes)
-app.use("/api/jobs", jobRoutes)
-app.use("/api/ai", aiRoutes)
-app.use("/api/applications", applicationRoutes)
+// ======================
+// ROUTES
+// ======================
+app.use("/api/jobs", jobRoutes);
+app.use("/api/ai", aiRoutes);
+app.use("/api/applications", applicationRoutes);
 
+// ======================
+// SERVER
+// ======================
 app.listen(process.env.PORT, () => {
- console.log("Server running on port", process.env.PORT)
-})
+  console.log("Server running on port", process.env.PORT);
+});
