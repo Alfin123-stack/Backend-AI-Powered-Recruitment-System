@@ -8,6 +8,7 @@ const rateLimit = require("express-rate-limit");
 const jobRoutes = require("./routes/jobRoutes");
 const aiRoutes = require("./routes/aiRoutes");
 const applicationRoutes = require("./routes/applicationRoutes");
+const companyRoutes = require("./routes/companyRoutes");
 
 const app = express();
 
@@ -40,6 +41,7 @@ app.get("/", (req, res) => {
 app.use("/api/jobs", jobRoutes);
 app.use("/api/ai", aiRoutes);
 app.use("/api/applications", applicationRoutes);
+app.use("/api/companies", companyRoutes);
 
 // ======================
 // SERVER
