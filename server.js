@@ -9,15 +9,16 @@ const jobRoutes = require("./routes/jobRoutes");
 const aiRoutes = require("./routes/aiRoutes");
 const applicationRoutes = require("./routes/applicationRoutes");
 const companyRoutes = require("./routes/companyRoutes");
+const interviewRoutes = require("./routes/interviewRoutes"); // ← tambah
 
 const app = express();
 
 // ======================
 // MIDDLEWARE GLOBAL
 // ======================
-app.use(helmet()); // security headers — paling atas
+app.use(helmet());
 app.use(cors({ origin: "*" }));
-app.use(express.json()); // parse req.body JSON
+app.use(express.json());
 
 // ======================
 // RATE LIMIT
@@ -42,6 +43,7 @@ app.use("/api/jobs", jobRoutes);
 app.use("/api/ai", aiRoutes);
 app.use("/api/applications", applicationRoutes);
 app.use("/api/companies", companyRoutes);
+app.use("/api/interviews", interviewRoutes); // ← tambah
 
 // ======================
 // SERVER
