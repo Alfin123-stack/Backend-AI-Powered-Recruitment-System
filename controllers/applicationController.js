@@ -21,6 +21,7 @@ exports.getHRApplications = async (req, res) => {
         `
         id,
         status,
+        cv_url,
         created_at,
         users(full_name),
         jobs!inner(id, title, company_id),
@@ -36,6 +37,7 @@ exports.getHRApplications = async (req, res) => {
     const result = data.map((a) => ({
       id: a.id,
       status: a.status,
+      cv_url: a.cv_url || null,
       created_at: a.created_at,
       candidate_name: a.users?.full_name || "Kandidat",
       job_id: a.jobs?.id,
