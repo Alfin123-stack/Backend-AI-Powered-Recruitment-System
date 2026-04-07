@@ -239,3 +239,55 @@ exports.updateInterview = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+
+// ── GET MY INTERVIEWS (untuk kandidat yang login) ──────────
+exports.getMyInterviews = async (req, res) => {
+  try {
+    // Ambil semua aplikasi milik kandidat yang login
+    const { data: applications, error: appError } = await supabase
+      .from("applications")
+      .select("id, job_id, jobs(title, company_id, companies(name))")
+      .eq("candidate_id", req.user.id);
+
+    if (appError) return res.status(500).json({ error: appError.message });
+    if (!applications || applications.length === 0) return res.json([]);
+
+    const appIds = applications.map((a) => a.id);
+
+    // Ambil interviews dari aplikasi-aplikasi tersebut
+    const { data: interviews, error } = await supabase
+      .from("interviews")
+      .select("*")
+      .in("application_id", appIds)
+      .order("scheduled_at", { ascending: true });
+
+    if (error) return res.status(500).json({ error: error.message });
+
+    // Map aplikasi untuk lookup cepat
+    const appMap = {};
+    applications.forEach((a) => {
+      appMap[a.id] = a;
+    });
+
+    // Gabungkan data interview dengan job_title & company_name
+    const result = (interviews || []).map((iv) => {
+      const app = appMap[iv.application_id];
+      return {
+        id: iv.id,
+        application_id: iv.application_id,
+        scheduled_at: iv.scheduled_at,
+        type: iv.type,
+        location: iv.location,
+        notes: iv.notes,
+        status: iv.status,
+        created_at: iv.created_at,
+        job_title: app?.jobs?.title || "—",
+        company_name: app?.jobs?.companies?.name || "—",
+      };
+    });
+
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};

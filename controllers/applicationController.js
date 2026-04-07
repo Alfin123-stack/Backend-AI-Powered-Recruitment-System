@@ -1,45 +1,61 @@
 const supabase = require("../config/supabase");
 
-// ── GET ALL APPLICATIONS milik company HR yang login ───────
+// ── GET HR APPLICATIONS ────────────────────────────────────
 exports.getHRApplications = async (req, res) => {
   try {
-    // Cari company milik HR ini
     const { data: company, error: companyError } = await supabase
       .from("companies")
       .select("id")
       .eq("hr_id", req.user.id)
       .single();
 
-    if (companyError || !company) {
-      return res.status(404).json({ error: "Company tidak ditemukan" });
-    }
+    if (companyError || !company) return res.json([]);
 
-    // Ambil semua applications untuk jobs milik company ini
+    // Ambil job ids milik company
+    const { data: jobs } = await supabase
+      .from("jobs")
+      .select("id")
+      .eq("company_id", company.id);
+
+    if (!jobs || jobs.length === 0) return res.json([]);
+
+    const jobIds = jobs.map((j) => j.id);
+
     const { data, error } = await supabase
       .from("applications")
       .select(
         `
-        id,
-        status,
-        cv_url,
-        created_at,
-        users(full_name),
-        jobs!inner(id, title, company_id),
+        id, status, cv_url, created_at, candidate_id, job_id,
+        jobs(id, title),
         resume_analysis(resume_score, matching_score, extracted_skills)
       `,
       )
-      .eq("jobs.company_id", company.id)
+      .in("job_id", jobIds)
       .order("created_at", { ascending: false });
 
     if (error) return res.status(500).json({ error: error.message });
 
-    // Flatten data agar mudah dikonsumsi frontend
+    // Ambil nama kandidat terpisah
+    const candidateIds = [...new Set(data.map((a) => a.candidate_id))];
+    const { data: users } = await supabase
+      .from("users")
+      .select("id, full_name, email")
+      .in("id", candidateIds);
+
+    const userMap = {};
+    (users || []).forEach((u) => {
+      userMap[u.id] = u;
+    });
+
     const result = data.map((a) => ({
       id: a.id,
       status: a.status,
       cv_url: a.cv_url || null,
       created_at: a.created_at,
-      candidate_name: a.users?.full_name || "Kandidat",
+      candidate_name:
+        userMap[a.candidate_id]?.full_name ||
+        userMap[a.candidate_id]?.email ||
+        "Kandidat",
       job_id: a.jobs?.id,
       job_title: a.jobs?.title,
       resume_score: a.resume_analysis?.resume_score ?? 0,
@@ -64,7 +80,6 @@ exports.updateApplicationStatus = async (req, res) => {
       return res.status(400).json({ error: "Status tidak valid" });
     }
 
-    // Pastikan application ini milik company HR yang login
     const { data: company } = await supabase
       .from("companies")
       .select("id")
@@ -88,20 +103,20 @@ exports.updateApplicationStatus = async (req, res) => {
   }
 };
 
+// ── APPLY JOB ──────────────────────────────────────────────
 exports.applyJob = async (req, res) => {
   try {
     const { job_id, cv_url, analysis } = req.body;
-    // analysis = hasil dari Gemini yang sudah diproses di frontend
 
     if (!job_id) return res.status(400).json({ error: "job_id wajib diisi" });
 
-    // Cek sudah pernah apply belum
+    // Cek sudah pernah apply — pakai maybeSingle bukan single
     const { data: existing } = await supabase
       .from("applications")
       .select("id")
       .eq("job_id", job_id)
       .eq("candidate_id", req.user.id)
-      .single();
+      .maybeSingle();
 
     if (existing) {
       return res
@@ -109,7 +124,6 @@ exports.applyJob = async (req, res) => {
         .json({ error: "Kamu sudah melamar ke posisi ini" });
     }
 
-    // Insert application
     const { data: application, error: appError } = await supabase
       .from("applications")
       .insert([
@@ -125,21 +139,25 @@ exports.applyJob = async (req, res) => {
 
     if (appError) return res.status(500).json({ error: appError.message });
 
-    // Simpan hasil analisis AI jika ada
     if (analysis) {
-      await supabase.from("resume_analysis").insert([
-        {
-          application_id: application.id,
-          resume_score: analysis.resumeScore,
-          matching_score: analysis.matchingScore,
-          ats_score: analysis.atsScore,
-          overall_score: analysis.overallScore,
-          extracted_skills: analysis.skills,
-          categories: analysis.categories,
-          strengths: analysis.strengths,
-          improvements: analysis.improvements,
-        },
-      ]);
+      const { error: analysisError } = await supabase
+        .from("resume_analysis")
+        .insert([
+          {
+            application_id: application.id,
+            resume_score: analysis.resumeScore,
+            matching_score: analysis.matchingScore,
+            ats_score: analysis.atsScore,
+            overall_score: analysis.overallScore,
+            extracted_skills: analysis.skills,
+            categories: analysis.categories,
+            strengths: analysis.strengths,
+            improvements: analysis.improvements,
+          },
+        ]);
+
+      if (analysisError)
+        console.error("Gagal simpan analisis:", analysisError.message);
     }
 
     res.status(201).json(application);
@@ -148,14 +166,14 @@ exports.applyJob = async (req, res) => {
   }
 };
 
-// applicationController.js
+// ── GET MY APPLICATIONS (candidate) ───────────────────────
 exports.getMyApplications = async (req, res) => {
   try {
     const { data, error } = await supabase
       .from("applications")
       .select(
         `
-        id, status, created_at, cv_url,
+        id, status, created_at, cv_url, job_id,
         jobs(title, companies(name)),
         resume_analysis(resume_score, matching_score)
       `,
@@ -167,11 +185,12 @@ exports.getMyApplications = async (req, res) => {
 
     const result = data.map((a) => ({
       id: a.id,
+      job_id: a.job_id,
       status: a.status,
       created_at: a.created_at,
-      cv_url: a.cv_url,
-      job_title: a.jobs?.title,
-      company_name: a.jobs?.companies?.name,
+      cv_url: a.cv_url || null,
+      job_title: a.jobs?.title || "—",
+      company_name: a.jobs?.companies?.name || "—",
       resume_score: a.resume_analysis?.resume_score ?? 0,
       matching_score: a.resume_analysis?.matching_score ?? 0,
     }));
@@ -182,6 +201,7 @@ exports.getMyApplications = async (req, res) => {
   }
 };
 
+// ── CHECK APPLIED ──────────────────────────────────────────
 exports.checkApplied = async (req, res) => {
   try {
     const { job_id } = req.params;
