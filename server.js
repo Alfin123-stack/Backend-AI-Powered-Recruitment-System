@@ -11,6 +11,7 @@ const applicationRoutes = require("./routes/applicationRoutes");
 const companyRoutes = require("./routes/companyRoutes");
 const interviewRoutes = require("./routes/interviewRoutes"); // ← tambah
 const savedJobRoutes = require("./routes/savedJobRoutes"); // ← tambah
+const notificationRoutes = require("./routes/notificationRoutes");
 
 const app = express();
 
@@ -46,6 +47,8 @@ app.use("/api/applications", applicationRoutes);
 app.use("/api/companies", companyRoutes);
 app.use("/api/interviews", interviewRoutes); // ← tambah
 app.use("/api/saved-jobs", savedJobRoutes); // ← tambah
+
+app.use("/api/notifications", notificationRoutes);
 
 // ======================
 // SERVER
