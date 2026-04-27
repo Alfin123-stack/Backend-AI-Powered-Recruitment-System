@@ -12,6 +12,7 @@ const companyRoutes = require("./routes/companyRoutes");
 const interviewRoutes = require("./routes/interviewRoutes"); // ← tambah
 const savedJobRoutes = require("./routes/savedJobRoutes"); // ← tambah
 const notificationRoutes = require("./routes/notificationRoutes");
+const cvAnalysisRoutes = require("./routes/cvAnalysisRoutes"); // ← tambah
 
 const app = express();
 
@@ -47,7 +48,7 @@ app.use("/api/applications", applicationRoutes);
 app.use("/api/companies", companyRoutes);
 app.use("/api/interviews", interviewRoutes); // ← tambah
 app.use("/api/saved-jobs", savedJobRoutes); // ← tambah
-
+app.use("/api/cv-analysis", cvAnalysisRoutes); // ← tambah
 app.use("/api/notifications", notificationRoutes);
 
 // ======================
