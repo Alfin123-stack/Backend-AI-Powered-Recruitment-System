@@ -9,10 +9,10 @@ const jobRoutes = require("./routes/jobRoutes");
 const aiRoutes = require("./routes/aiRoutes");
 const applicationRoutes = require("./routes/applicationRoutes");
 const companyRoutes = require("./routes/companyRoutes");
-const interviewRoutes = require("./routes/interviewRoutes"); // ← tambah
-const savedJobRoutes = require("./routes/savedJobRoutes"); // ← tambah
+const interviewRoutes = require("./routes/interviewRoutes");
+const savedJobRoutes = require("./routes/savedJobRoutes");
 const notificationRoutes = require("./routes/notificationRoutes");
-const cvAnalysisRoutes = require("./routes/cvAnalysisRoutes"); // ← tambah
+const cvAnalysisRoutes = require("./routes/cvAnalysisRoutes");
 
 const app = express();
 
@@ -46,14 +46,22 @@ app.use("/api/jobs", jobRoutes);
 app.use("/api/ai", aiRoutes);
 app.use("/api/applications", applicationRoutes);
 app.use("/api/companies", companyRoutes);
-app.use("/api/interviews", interviewRoutes); // ← tambah
-app.use("/api/saved-jobs", savedJobRoutes); // ← tambah
-app.use("/api/cv-analysis", cvAnalysisRoutes); // ← tambah
+app.use("/api/interviews", interviewRoutes);
+app.use("/api/saved-jobs", savedJobRoutes);
+app.use("/api/cv-analysis", cvAnalysisRoutes);
 app.use("/api/notifications", notificationRoutes);
 
 // ======================
-// SERVER
+// EXPORT UNTUK VERCEL (SERVERLESS)
 // ======================
-app.listen(process.env.PORT, () => {
-  console.log("Server running on port", process.env.PORT);
-});
+module.exports = app;
+
+// ======================
+// LOCAL DEVELOPMENT ONLY
+// ======================
+if (require.main === module) {
+  const PORT = process.env.PORT || 3000;
+  app.listen(PORT, () => {
+    console.log("Server running on port", PORT);
+  });
+}
