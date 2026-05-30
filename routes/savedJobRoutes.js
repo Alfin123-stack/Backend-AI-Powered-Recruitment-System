@@ -4,7 +4,7 @@ const {
   saveJob,
   unsaveJob,
   checkSaved,
-} = require("../controllers/savedjobController");
+} = require("../controllers/savedJobController");
 const authMiddleware = require("../middleware/authMiddleware");
 
 router.get("/", authMiddleware, getSavedJobs); // ambil semua saved jobs
