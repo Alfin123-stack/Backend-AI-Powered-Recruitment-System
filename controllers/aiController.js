@@ -2,13 +2,13 @@ const analyzeResume = require("../services/geminiService");
 
 exports.analyze = async (req, res) => {
   try {
-    const { text, jobDescription } = req.body;
+    const { text } = req.body;
 
     if (!text) {
       return res.status(400).json({ error: "Teks CV tidak ditemukan" });
     }
 
-    const result = await analyzeResume(text, jobDescription);
+    const result = await analyzeResume(text);
     res.json(result);
   } catch (err) {
     console.error("Gemini error:", err.message);

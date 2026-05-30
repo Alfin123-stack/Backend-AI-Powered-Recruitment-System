@@ -90,8 +90,6 @@ exports.updateCompany = async (req, res) => {
 };
 
 // ── GET PUBLIC COMPANIES ───────────────────────────────────
-// Untuk halaman /company — public, tidak butuh auth
-// Return semua company yang punya minimal 1 job aktif
 exports.getPublicCompanies = async (req, res) => {
   try {
     const { data, error } = await supabase.from("companies").select(`
@@ -105,17 +103,12 @@ exports.getPublicCompanies = async (req, res) => {
 
     if (error) return res.status(500).json({ error: error.message });
 
-    // Filter hanya company yang punya job aktif
-    // Hitung openJobs, ambil location & tags dari jobs
     const result = data
       .map((c) => {
         const activeJobs = (c.jobs || []).filter((j) => j.is_active);
         if (activeJobs.length === 0) return null;
 
-        // Ambil lokasi dari job pertama
         const location = activeJobs[0]?.location?.split("/")[0]?.trim() || null;
-
-        // Kumpulkan unique tags dari skills semua jobs aktif
         const tags = [
           ...new Set(activeJobs.flatMap((j) => (j.skills || []).slice(0, 2))),
         ].slice(0, 3);
@@ -126,14 +119,74 @@ exports.getPublicCompanies = async (req, res) => {
           description: c.description,
           company_size: c.company_size,
           logo_url: c.logo_url,
+          website: null,
+          verified: false,
           openJobs: activeJobs.length,
           location,
           tags,
         };
       })
-      .filter(Boolean); // hapus company tanpa job aktif
+      .filter(Boolean);
 
     res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// ── GET COMPANY BY ID (public) ─────────────────────────────
+exports.getCompanyById = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Ambil semua kolom yang dibutuhkan frontend termasuk website & verified
+    const { data: company, error: companyError } = await supabase
+      .from("companies")
+      .select("id, name, description, company_size, logo_url")
+      .eq("id", id)
+      .single();
+
+    if (companyError && companyError.code === "PGRST116") {
+      return res.status(404).json({ error: "Perusahaan tidak ditemukan" });
+    }
+
+    if (companyError) {
+      return res.status(500).json({ error: companyError.message });
+    }
+
+    // Ambil semua jobs aktif milik company ini
+    const { data: jobs, error: jobsError } = await supabase
+      .from("jobs")
+      .select(
+        "id, title, description, requirements, salary, location, type, skills, benefits, deadline, is_active, created_at, company_id",
+      )
+      .eq("company_id", id)
+      .eq("is_active", true)
+      .order("created_at", { ascending: false });
+
+    if (jobsError) {
+      return res.status(500).json({ error: jobsError.message });
+    }
+
+    const activeJobs = jobs || [];
+
+    // Derive location & tags dari jobs aktif
+    const location = activeJobs[0]?.location?.split("/")[0]?.trim() || null;
+    const tags = [
+      ...new Set(activeJobs.flatMap((j) => (j.skills || []).slice(0, 2))),
+    ].slice(0, 3);
+
+    res.json({
+      company: {
+        ...company,
+        location,
+        tags,
+        openJobs: activeJobs.length,
+        website: null, // kolom belum ada di tabel — tambah migrasi jika perlu
+        verified: false, // kolom belum ada di tabel — tambah migrasi jika perlu
+      },
+      jobs: activeJobs,
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
