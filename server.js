@@ -13,7 +13,7 @@ const interviewRoutes = require("./routes/interviewRoutes");
 const savedJobRoutes = require("./routes/savedJobRoutes");
 const notificationRoutes = require("./routes/notificationRoutes");
 const cvAnalysisRoutes = require("./routes/cvAnalysisRoutes");
-
+const chatRoutes = require("./routes/chatRoutes");
 const app = express();
 
 // ======================
@@ -42,6 +42,7 @@ app.get("/", (req, res) => {
 // ======================
 // ROUTES
 // ======================
+app.use("/api/chat", chatRoutes);
 app.use("/api/jobs", jobRoutes);
 app.use("/api/ai", aiRoutes);
 app.use("/api/applications", applicationRoutes);
