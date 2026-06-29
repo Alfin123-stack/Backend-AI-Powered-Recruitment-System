@@ -1,9 +1,5 @@
 const supabase = require("../config/supabase");
 
-/**
- * Ambil top kandidat per posisi (job title) dari resume_analysis
- * Di-group by job title dan diambil top 3 per posisi berdasarkan overall_score
- */
 async function getTopCandidatesByPosition() {
   try {
     const { data, error } = await supabase

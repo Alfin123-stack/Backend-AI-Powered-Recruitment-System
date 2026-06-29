@@ -8,9 +8,10 @@ exports.chat = async (req, res) => {
       return res.status(400).json({ error: "Message tidak boleh kosong" });
     }
 
-    const role = req.user.role; // 'hr' | 'candidate' — dari authMiddleware
+    const role = req.user.role;       // 'hr' | 'candidate'
+    const userId = req.user.id;       // dipakai untuk query CV kandidat
 
-    const reply = await processChat(message, role, conversationHistory);
+    const reply = await processChat(message, role, conversationHistory, userId);
 
     res.json({ reply });
   } catch (err) {
