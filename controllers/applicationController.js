@@ -82,9 +82,14 @@ exports.updateApplicationStatus = async (req, res) => {
 
   if (!company) return res.status(403).json({ error: "Forbidden" });
 
+  // ── FIX ──────────────────────────────────────────────────
+  // Tabel `applications` tidak punya kolom `updated_at`, jadi
+  // jangan kirim field itu — sebelumnya menyebabkan error:
+  // "Could not find the 'updated_at' column of 'applications'
+  // in the schema cache"
   const { data, error } = await supabase
     .from("applications")
-    .update({ status, updated_at: new Date().toISOString() })
+    .update({ status })
     .eq("id", id)
     .select("id, status, candidate_id, jobs(title)")
     .single();
