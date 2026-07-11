@@ -1,0 +1,23 @@
+version: 2
+updates:
+  # Dependency npm -- dicek tiap minggu, PR otomatis dibuat kalau ada
+  # update (termasuk security patch). Batasi 5 PR terbuka sekaligus biar
+  # tidak membanjiri, dan dikelompokkan jadi 1 PR untuk minor/patch supaya
+  # tidak berisik (review satu-satu tetap untuk major version).
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    groups:
+      minor-and-patch:
+        update-types:
+          - "minor"
+          - "patch"
+
+  # GitHub Actions yang dipakai di .github/workflows/ juga perlu di-update
+  # (actions/checkout, actions/setup-node, dll)
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"

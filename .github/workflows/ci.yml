@@ -1,0 +1,46 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  security-and-build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      # npm ci (bukan npm install) -- install PERSIS sesuai package-lock.json,
+      # gagal kalau package.json & package-lock.json tidak sinkron. Ini
+      # mencegah "works on my machine" karena versi dependency beda antara
+      # lokal & CI/production.
+      - name: Install dependencies (npm ci)
+        run: npm ci
+
+      # Gagalkan build kalau ada kerentanan HIGH/CRITICAL yang baru masuk lewat
+      # dependency baru/update. Kerentanan MODERATE ke bawah cuma warning
+      # (tidak stop build) supaya tidak terlalu berisik untuk hal yang belum
+      # tentu darurat.
+      - name: Audit dependencies (fail on high/critical)
+        run: npm audit --audit-level=high
+
+      - name: Syntax check semua file .js
+        run: |
+          find . -name "*.js" -not -path "./node_modules/*" -print0 \
+            | xargs -0 -n1 node -c
+
+      # TODO: ganti/tambah step ini begitu ada test suite beneran
+      # (Jest/Vitest/Supertest). Sekarang belum ada test, jadi cuma
+      # placeholder supaya CI tidak "hijau palsu".
+      - name: Run tests
+        run: npm test --if-present
