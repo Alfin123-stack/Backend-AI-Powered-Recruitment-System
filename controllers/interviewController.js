@@ -45,10 +45,17 @@ exports.getHRInterviews = async (req, res) => {
 
   const jobIds = jobs.map((j) => j.id);
 
-  const { data: applications } = await supabase
-    .from("applications")
-    .select("id, candidate_id, job_id, jobs(title)")
-    .in("job_id", jobIds);
+ const { data: applications } = await supabase
+  .from("applications")
+  .select(`
+    id,
+    candidate_id,
+    job_id,
+    status,
+    offer_status,
+    jobs(title)
+  `)
+  .in("job_id", jobIds);
 
   if (!applications || applications.length === 0) return res.json([]);
 
@@ -81,18 +88,28 @@ exports.getHRInterviews = async (req, res) => {
   const result = (interviews || []).map((iv) => {
     const app = appMap[iv.application_id];
     const candidate = app ? userMap[app.candidate_id] : null;
-    return {
-      id: iv.id,
-      application_id: iv.application_id,
-      scheduled_at: iv.scheduled_at,
-      type: iv.type,
-      location: iv.location,
-      notes: iv.notes,
-      status: iv.status,
-      created_at: iv.created_at,
-      candidate_name: candidate?.full_name || candidate?.email || "Kandidat",
-      job_title: app?.jobs?.title || "—",
-    };
+   return {
+  id: iv.id,
+  application_id: iv.application_id,
+
+  scheduled_at: iv.scheduled_at,
+  type: iv.type,
+  location: iv.location,
+  notes: iv.notes,
+
+  status: iv.status,
+
+  // TAMBAHKAN
+  application_status: app?.status ?? null,
+  offer_status: app?.offer_status ?? null,
+
+  created_at: iv.created_at,
+
+  candidate_name: candidate?.full_name || candidate?.email || "Kandidat",
+  candidate_email: candidate?.email || null,
+
+  job_title: app?.jobs?.title || "—",
+};
   });
 
   res.json(result);
@@ -169,7 +186,24 @@ exports.getShortlistedCandidates = async (req, res) => {
 
 // ── CREATE INTERVIEW ───────────────────────────────────────
 exports.createInterview = async (req, res) => {
-  const { application_id, scheduled_at, type, location, notes } = req.body;
+  // FIX: `round`, `duration_minutes`, `interviewer_name` sebelumnya tidak
+  // di-destructure sama sekali dari req.body, padahal useInterviewSchedule.ts
+  // (frontend) sudah mengirim ketiganya sejak awal. Akibatnya HR isi
+  // "First Interview" / "60 menit" / nama interviewer di form Create
+  // Interview, submit sukses (tidak ada error), tapi ketiga data itu tidak
+  // pernah tersimpan ke DB — silently dropped. InterviewRow.tsx yang
+  // menampilkan interview.round/duration_minutes/interviewer_name akan
+  // selalu kosong walau HR sudah mengisinya dengan benar.
+  const {
+    application_id,
+    scheduled_at,
+    type,
+    location,
+    notes,
+    round,
+    duration_minutes,
+    interviewer_name,
+  } = req.body;
 
   if (!application_id || !scheduled_at) {
     return res
@@ -210,6 +244,14 @@ exports.createInterview = async (req, res) => {
     location: location || null,
     notes: notes || null,
     status: "scheduled",
+    // FIX: ketiga field ini sebelumnya tidak ada di payload sama sekali,
+    // jadi tidak pernah ikut ter-insert/ter-update meskipun frontend sudah
+    // mengirimnya. round dikasih default yang sama dengan default form di
+    // frontend ("First Interview") supaya tidak null kalau suatu saat ada
+    // caller lain yang tidak mengirim field ini.
+    round: round || "First Interview",
+    duration_minutes: duration_minutes ? Number(duration_minutes) : 60,
+    interviewer_name: interviewer_name || null,
   };
 
   let data, error;

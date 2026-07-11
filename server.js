@@ -14,6 +14,7 @@ const savedJobRoutes = require("./routes/savedJobRoutes");
 const notificationRoutes = require("./routes/notificationRoutes");
 const cvAnalysisRoutes = require("./routes/cvAnalysisRoutes");
 const chatRoutes = require("./routes/chatRoutes");
+const evaluationRoutes = require("./routes/evaluationRoutes");
 const app = express();
 
 // ======================
@@ -51,7 +52,7 @@ app.use("/api/interviews", interviewRoutes);
 app.use("/api/saved-jobs", savedJobRoutes);
 app.use("/api/cv-analysis", cvAnalysisRoutes);
 app.use("/api/notifications", notificationRoutes);
-
+app.use("/api/evaluations", evaluationRoutes);
 // ======================
 // EXPORT UNTUK VERCEL (SERVERLESS)
 // ======================

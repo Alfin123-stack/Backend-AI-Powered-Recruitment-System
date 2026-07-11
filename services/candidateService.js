@@ -1,7 +1,55 @@
 const supabase = require("../config/supabase");
 
-async function getTopCandidatesByPosition() {
+// FIX: kebocoran data antar-company. getTopCandidatesByPosition() dan
+// searchCandidates() sebelumnya query LANGSUNG ke `resume_analysis` tanpa
+// scoping company sama sekali — beda dengan controller lain
+// (applicationController.getHRApplications, interviewController.getHRInterviews,
+// dst) yang SELALU mulai dari "ambil company milik req.user.id dulu, baru
+// filter ke job_id company itu". Akibatnya HR company A yang chat ke AI
+// assistant bisa melihat data kandidat company B, C, dst — semua tenant di
+// platform, karena backend connect ke Supabase pakai service_role key yang
+// bypass RLS sepenuhnya (lihat config/supabase.js), jadi tidak ada proteksi
+// lain selain scoping manual di query ini.
+//
+// getOwnedJobIds() menerapkan pola yang sama seperti controller lain: company
+// -> jobs milik company itu -> daftar job_id yang boleh diakses. Kedua fungsi
+// publik sekarang WAJIB menerima `hrId` dan memfilter lewat job_id ini.
+async function getOwnedJobIds(hrId) {
+  if (!hrId) return [];
+
+  const { data: company } = await supabase
+    .from("companies")
+    .select("id")
+    .eq("hr_id", hrId)
+    .single();
+
+  if (!company) return [];
+
+  const { data: jobs } = await supabase
+    .from("jobs")
+    .select("id")
+    .eq("company_id", company.id);
+
+  return (jobs || []).map((j) => j.id);
+}
+
+/**
+ * @param {string} hrId - req.user.id milik HR yang login (WAJIB — tanpa ini
+ *   fungsi return {} kosong, bukan fallback ke "semua data").
+ */
+async function getTopCandidatesByPosition(hrId) {
   try {
+    const jobIds = await getOwnedJobIds(hrId);
+    if (jobIds.length === 0) return {};
+
+    const { data: applications } = await supabase
+      .from("applications")
+      .select("id")
+      .in("job_id", jobIds);
+
+    const appIds = (applications || []).map((a) => a.id);
+    if (appIds.length === 0) return {};
+
     const { data, error } = await supabase
       .from("resume_analysis")
       .select(
@@ -24,6 +72,8 @@ async function getTopCandidatesByPosition() {
         )
       `
       )
+      // FIX: filter utama — sebelumnya tidak ada baris ini sama sekali.
+      .in("application_id", appIds)
       .order("overall_score", { ascending: false })
       .limit(100);
 
@@ -69,9 +119,21 @@ async function getTopCandidatesByPosition() {
 /**
  * Cari kandidat yang relevan berdasarkan keyword dari pesan HR
  * @param {string} userMessage
+ * @param {string} hrId - req.user.id milik HR yang login (WAJIB).
  */
-async function searchCandidates(userMessage) {
+async function searchCandidates(userMessage, hrId) {
   try {
+    const jobIds = await getOwnedJobIds(hrId);
+    if (jobIds.length === 0) return [];
+
+    const { data: applications } = await supabase
+      .from("applications")
+      .select("id")
+      .in("job_id", jobIds);
+
+    const appIds = (applications || []).map((a) => a.id);
+    if (appIds.length === 0) return [];
+
     const { data, error } = await supabase
       .from("resume_analysis")
       .select(
@@ -93,6 +155,8 @@ async function searchCandidates(userMessage) {
         )
       `
       )
+      // FIX: filter utama — sebelumnya tidak ada baris ini sama sekali.
+      .in("application_id", appIds)
       .order("overall_score", { ascending: false })
       .limit(50);
 

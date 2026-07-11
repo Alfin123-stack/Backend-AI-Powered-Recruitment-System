@@ -73,7 +73,11 @@ Role user saat ini: ${role === "hr" ? "HR / Recruiter" : "Kandidat / Pencari Ker
     const intent = detectHRIntent(userMessage);
 
     if (intent === "top_by_position") {
-      const grouped = await getTopCandidatesByPosition();
+      // FIX: sebelumnya dipanggil tanpa argumen — getTopCandidatesByPosition
+      // sekarang WAJIB tahu hrId untuk scoping ke company milik HR ini saja
+      // (lihat fix di candidateService.js). `userId` di sini adalah
+      // req.user.id milik HR yang sedang chat, diteruskan dari processChat().
+      const grouped = await getTopCandidatesByPosition(userId);
       const positions = Object.keys(grouped);
 
       if (positions.length > 0) {
@@ -90,7 +94,9 @@ Role user saat ini: ${role === "hr" ? "HR / Recruiter" : "Kandidat / Pencari Ker
     }
 
     if (intent === "search_candidates") {
-      const results = await searchCandidates(userMessage);
+      // FIX: sama seperti di atas — searchCandidates sekarang WAJIB
+      // menerima hrId untuk scoping.
+      const results = await searchCandidates(userMessage, userId);
       if (results.length > 0) {
         systemContext += `\n\n## Kandidat Relevan (dari database):\n`;
         results.forEach((c, i) => {
