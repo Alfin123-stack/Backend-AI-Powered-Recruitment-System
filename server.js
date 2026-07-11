@@ -99,6 +99,23 @@ app.use("/api/saved-jobs", savedJobRoutes);
 app.use("/api/cv-analysis", cvAnalysisRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/evaluations", evaluationRoutes);
+
+// ======================
+// 404 HANDLER
+// ======================
+// Route yang tidak match apapun di atas -> 404 rapi (bukan HTML default Express)
+app.use((req, res) => {
+  res.status(404).json({ error: "Endpoint tidak ditemukan" });
+});
+
+// ======================
+// ERROR HANDLER TERPUSAT
+// ======================
+// WAJIB paling akhir, setelah semua routes. 4 parameter (err, req, res, next)
+// supaya Express mengenalinya sebagai error-handling middleware.
+const errorHandler = require("./middleware/errorHandler");
+app.use(errorHandler);
+
 // ======================
 // EXPORT UNTUK VERCEL (SERVERLESS)
 // ======================

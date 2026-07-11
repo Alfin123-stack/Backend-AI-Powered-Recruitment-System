@@ -1,9 +1,10 @@
 const { createNotification } = require("./notificationController");
 const supabase = require("../config/supabase");
+const logger = require("../utils/logger");
 const { sign } = require("../utils/offerToken");
 
 // ── GET HR APPLICATIONS ────────────────────────────────────
-exports.getHRApplications = async (req, res) => {
+exports.getHRApplications = async (req, res, next) => {
   const { data: company, error: companyError } = await supabase
     .from("companies")
     .select("id")
@@ -33,7 +34,7 @@ exports.getHRApplications = async (req, res) => {
     .in("job_id", jobIds)
     .order("created_at", { ascending: false });
 
-  if (error) return res.status(500).json({ error: error.message });
+  if (error) return next(error);
 
   const candidateIds = [...new Set(data.map((a) => a.candidate_id))];
   const { data: users } = await supabase
@@ -83,7 +84,7 @@ exports.getHRApplications = async (req, res) => {
 };
 
 // ── UPDATE STATUS APPLICATION ──────────────────────────────
-exports.updateApplicationStatus = async (req, res) => {
+exports.updateApplicationStatus = async (req, res, next) => {
   const { id } = req.params;
   // `skipStatusNotification` — dikirim oleh caller (sendRejectionAction)
   // yang SUDAH mengirim notifikasi lebih kaya sendiri (lewat
@@ -165,7 +166,7 @@ exports.updateApplicationStatus = async (req, res) => {
     .select("id, status, candidate_id, jobs(title)")
     .single();
 
-  if (error) return res.status(500).json({ error: error.message });
+  if (error) return next(error);
 
   const jobTitle = data.jobs?.title || "posisi ini";
   const notifMap = {
@@ -292,7 +293,7 @@ exports.updateApplicationStatus = async (req, res) => {
 };
 
 // ── APPLY JOB ──────────────────────────────────────────────
-exports.applyJob = async (req, res) => {
+exports.applyJob = async (req, res, next) => {
   const { job_id, cv_url, analysis } = req.body;
 
   if (!job_id) return res.status(400).json({ error: "job_id wajib diisi" });
@@ -321,7 +322,7 @@ exports.applyJob = async (req, res) => {
     .select()
     .single();
 
-  if (appError) return res.status(500).json({ error: appError.message });
+  if (appError) return next(appError);
 
   // ── Ambil detail job + company + nama kandidat ──────────
   const { data: jobDetail } = await supabase
@@ -384,14 +385,14 @@ exports.applyJob = async (req, res) => {
       ]);
 
     if (analysisError)
-      console.error("❌ Gagal simpan analisis:", analysisError.message);
+      logger.error({ err: analysisError }, "Gagal simpan resume analysis");
   }
 
   res.status(201).json(application);
 };
 
 // ── GET MY APPLICATIONS (candidate) ───────────────────────
-exports.getMyApplications = async (req, res) => {
+exports.getMyApplications = async (req, res, next) => {
   const { data, error } = await supabase
     .from("applications")
     .select(
@@ -404,7 +405,7 @@ exports.getMyApplications = async (req, res) => {
     .eq("candidate_id", req.user.id)
     .order("created_at", { ascending: false });
 
-  if (error) return res.status(500).json({ error: error.message });
+  if (error) return next(error);
 
   const result = data.map((a) => ({
     id: a.id,
@@ -422,7 +423,7 @@ exports.getMyApplications = async (req, res) => {
 };
 
 // ── CHECK APPLIED ──────────────────────────────────────────
-exports.checkApplied = async (req, res) => {
+exports.checkApplied = async (req, res, next) => {
   const { job_id } = req.params;
 
   const { data } = await supabase
@@ -441,7 +442,7 @@ exports.checkApplied = async (req, res) => {
 // Backend generate signed token (HMAC) yang nanti disisipkan HR ke
 // acceptUrl/declineUrl di email, supaya kandidat bisa merespons tanpa
 // perlu login. Endpoint ini juga menandai offer sebagai "pending" di DB.
-exports.createOfferToken = async (req, res) => {
+exports.createOfferToken = async (req, res, next) => {
   const { id } = req.params;
   const { expires_at } = req.body;
 
@@ -472,13 +473,13 @@ exports.createOfferToken = async (req, res) => {
     .update({ offer_status: "pending", offer_expires_at: expires_at })
     .eq("id", id);
 
-  if (updateError) return res.status(500).json({ error: updateError.message });
+  if (updateError) return next(updateError);
 
   let token;
   try {
     token = sign(id, expires_at);
   } catch (err) {
-    return res.status(500).json({ error: err.message });
+    return next(err);
   }
 
   res.json({ token });
@@ -488,7 +489,7 @@ exports.createOfferToken = async (req, res) => {
 // Dilindungi offerAuthMiddleware, bukan authMiddleware biasa — bisa
 // diakses lewat session kandidat (dashboard) ATAU signed token dari
 // link email (req.offerAuthVia menandai jalur mana yang dipakai).
-exports.updateOfferStatus = async (req, res) => {
+exports.updateOfferStatus = async (req, res, next) => {
   const { id } = req.params;
   const { offer_status } = req.body;
 
@@ -537,7 +538,7 @@ exports.updateOfferStatus = async (req, res) => {
     .select()
     .single();
 
-  if (error) return res.status(500).json({ error: error.message });
+  if (error) return next(error);
 
   const jobTitle = app.jobs?.title || "posisi ini";
   const isAccepted = offer_status === "accepted";
@@ -581,7 +582,7 @@ exports.updateOfferStatus = async (req, res) => {
   } catch (notifSyncErr) {
     // Non-critical — applications adalah source of truth utamanya; log
     // dan lanjut supaya response ke kandidat/link email tetap berhasil.
-    console.error("[updateOfferStatus] Failed to sync notification metadata:", notifSyncErr);
+    logger.error({ err: notifSyncErr }, "[updateOfferStatus] Gagal sync notification metadata");
   }
 
   // ── Notifikasi ke HR & Kandidat ─────────────────────────────
@@ -642,7 +643,7 @@ exports.updateOfferStatus = async (req, res) => {
 // berhasil mengirim email detail onboarding ke kandidat — supaya tombol
 // "Kirim Onboarding Email" di dashboard HR berubah jadi "Sudah Dikirim" dan
 // tidak bisa dikirim dobel ke kandidat yang sama.
-exports.updateOnboardingSent = async (req, res) => {
+exports.updateOnboardingSent = async (req, res, next) => {
   const { id } = req.params;
   const { onboarding_sent } = req.body;
 
@@ -688,7 +689,7 @@ exports.updateOnboardingSent = async (req, res) => {
     .select("id, onboarding_sent, candidate_id, jobs(title)")
     .single();
 
-  if (error) return res.status(500).json({ error: error.message });
+  if (error) return next(error);
 
   // ── Notifikasi ke HR & Kandidat ──────────────────────────────────────
   // Simetris dengan pola applyJob (notif ke kandidat + notif ke HR untuk

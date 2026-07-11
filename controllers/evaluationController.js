@@ -24,7 +24,7 @@ const getOwnedApplicationForHR = async (applicationId, hrId) => {
 };
 
 // ── CREATE EVALUATION (HR only) ─────────────────────────────
-exports.createEvaluation = async (req, res) => {
+exports.createEvaluation = async (req, res, next) => {
   if (req.user.role !== "hr") {
     return res.status(403).json({ error: "Forbidden" });
   }
@@ -83,7 +83,7 @@ exports.createEvaluation = async (req, res) => {
     .select()
     .single();
 
-  if (error) return res.status(500).json({ error: error.message });
+  if (error) return next(error);
 
   // TAMBAHAN: notifikasi ke kandidat begitu evaluasi tersimpan — untuk
   // KETIGA rekomendasi sekarang, karena rejectionActions.ts sudah tidak
@@ -176,7 +176,7 @@ exports.createEvaluation = async (req, res) => {
 // & nama evaluator. Candidate (pemilik application) lihat score,
 // recommendation, notes, dan tanggal — tanpa nama evaluator
 // (identitas internal HR tetap disembunyikan dari candidate).
-exports.getEvaluationsByApplication = async (req, res) => {
+exports.getEvaluationsByApplication = async (req, res, next) => {
   const { applicationId } = req.params;
 
   const { data: app, error: appError } = await supabase
@@ -205,7 +205,7 @@ exports.getEvaluationsByApplication = async (req, res) => {
     .eq("application_id", applicationId)
     .order("created_at", { ascending: false });
 
-  if (error) return res.status(500).json({ error: error.message });
+  if (error) return next(error);
 
   if (isOwnerHR) {
     return res.json(

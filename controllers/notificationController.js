@@ -1,7 +1,8 @@
 const supabase = require("../config/supabase");
+const logger = require("../utils/logger");
 
 // ── GET notifikasi milik user yang login ───────────────────
-exports.getMyNotifications = async (req, res) => {
+exports.getMyNotifications = async (req, res, next) => {
   const { data, error } = await supabase
     .from("notifications")
     .select("*")
@@ -9,24 +10,24 @@ exports.getMyNotifications = async (req, res) => {
     .order("created_at", { ascending: false })
     .limit(20);
 
-  if (error) return res.status(500).json({ error: error.message });
+  if (error) return next(error);
   res.json(data || []);
 };
 
 // ── MARK ALL READ ──────────────────────────────────────────
-exports.markAllRead = async (req, res) => {
+exports.markAllRead = async (req, res, next) => {
   const { error } = await supabase
     .from("notifications")
     .update({ read: true })
     .eq("user_id", req.user.id)
     .eq("read", false);
 
-  if (error) return res.status(500).json({ error: error.message });
+  if (error) return next(error);
   res.json({ success: true });
 };
 
 // ── MARK SINGLE READ ───────────────────────────────────────
-exports.markOneRead = async (req, res) => {
+exports.markOneRead = async (req, res, next) => {
   const { id } = req.params;
 
   const { error } = await supabase
@@ -35,12 +36,12 @@ exports.markOneRead = async (req, res) => {
     .eq("id", id)
     .eq("user_id", req.user.id);
 
-  if (error) return res.status(500).json({ error: error.message });
+  if (error) return next(error);
   res.json({ success: true });
 };
 
 // ── DELETE SINGLE NOTIFICATION ─────────────────────────────
-exports.deleteNotification = async (req, res) => {
+exports.deleteNotification = async (req, res, next) => {
   const { id } = req.params;
 
   const { error } = await supabase
@@ -49,30 +50,30 @@ exports.deleteNotification = async (req, res) => {
     .eq("id", id)
     .eq("user_id", req.user.id);
 
-  if (error) return res.status(500).json({ error: error.message });
+  if (error) return next(error);
   res.json({ success: true });
 };
 
 // ── DELETE ALL NOTIFICATIONS ───────────────────────────────
-exports.deleteAllNotifications = async (req, res) => {
+exports.deleteAllNotifications = async (req, res, next) => {
   const { error } = await supabase
     .from("notifications")
     .delete()
     .eq("user_id", req.user.id);
 
-  if (error) return res.status(500).json({ error: error.message });
+  if (error) return next(error);
   res.json({ success: true });
 };
 
 // ── GET UNREAD COUNT ───────────────────────────────────────
-exports.getUnreadCount = async (req, res) => {
+exports.getUnreadCount = async (req, res, next) => {
   const { count, error } = await supabase
     .from("notifications")
     .select("*", { count: "exact", head: true })
     .eq("user_id", req.user.id)
     .eq("read", false);
 
-  if (error) return res.status(500).json({ error: error.message });
+  if (error) return next(error);
   res.json({ count: count || 0 });
 };
 
@@ -94,7 +95,7 @@ exports.createNotification = async (userId, type, title, message, metadata = {})
     .from("notifications")
     .insert([{ user_id: userId, type, title, message, metadata }]);
 
-  if (error) console.error("❌ createNotification gagal:", error.message);
+  if (error) logger.error({ err: error }, "createNotification gagal");
 };
 
 // ── CREATE NOTIFICATION FROM CLIENT (Next.js server actions) ─
@@ -106,7 +107,7 @@ exports.createNotification = async (userId, type, title, message, metadata = {})
 // bahwa req.user (HR) memang pemilik job/company dari application
 // tersebut. Ini mencegah request ini dipakai mengirim notifikasi ke
 // user sembarangan hanya dengan menebak/mengirim user_id.
-exports.createNotificationFromClient = async (req, res) => {
+exports.createNotificationFromClient = async (req, res, next) => {
   try {
     const { type, title, message, application_id, metadata } = req.body;
 
@@ -168,10 +169,10 @@ exports.createNotificationFromClient = async (req, res) => {
       .select()
       .single();
 
-    if (error) return res.status(500).json({ error: error.message });
+    if (error) return next(error);
 
     res.status(201).json(data);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    next(err);
   }
 };

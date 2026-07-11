@@ -27,7 +27,7 @@ const formatSchedule = (dateStr) => {
 };
 
 // ── GET ALL INTERVIEWS milik HR ────────────────────────────
-exports.getHRInterviews = async (req, res) => {
+exports.getHRInterviews = async (req, res, next) => {
   const { data: company } = await supabase
     .from("companies")
     .select("id")
@@ -67,7 +67,7 @@ exports.getHRInterviews = async (req, res) => {
     .in("application_id", appIds)
     .order("scheduled_at", { ascending: true });
 
-  if (error) return res.status(500).json({ error: error.message });
+  if (error) return next(error);
 
   const candidateIds = [...new Set(applications.map((a) => a.candidate_id))];
   const { data: users } = await supabase
@@ -116,7 +116,7 @@ exports.getHRInterviews = async (req, res) => {
 };
 
 // ── GET SHORTLISTED CANDIDATES (belum dijadwalkan) ─────────
-exports.getShortlistedCandidates = async (req, res) => {
+exports.getShortlistedCandidates = async (req, res, next) => {
   const { data: company } = await supabase
     .from("companies")
     .select("id")
@@ -140,7 +140,7 @@ exports.getShortlistedCandidates = async (req, res) => {
     .in("job_id", jobIds)
     .eq("status", "shortlisted");
 
-  if (error) return res.status(500).json({ error: error.message });
+  if (error) return next(error);
   if (!applications || applications.length === 0) return res.json([]);
 
   const appIds = applications.map((a) => a.id);
@@ -185,7 +185,7 @@ exports.getShortlistedCandidates = async (req, res) => {
 };
 
 // ── CREATE INTERVIEW ───────────────────────────────────────
-exports.createInterview = async (req, res) => {
+exports.createInterview = async (req, res, next) => {
   // FIX: `round`, `duration_minutes`, `interviewer_name` sebelumnya tidak
   // di-destructure sama sekali dari req.body, padahal useInterviewSchedule.ts
   // (frontend) sudah mengirim ketiganya sejak awal. Akibatnya HR isi
@@ -271,7 +271,7 @@ exports.createInterview = async (req, res) => {
       .single());
   }
 
-  if (error) return res.status(500).json({ error: error.message });
+  if (error) return next(error);
 
   // Trigger notifikasi ke kandidat
   const appDetail = await getAppDetail(application_id);
@@ -298,7 +298,7 @@ exports.createInterview = async (req, res) => {
 };
 
 // ── UPDATE INTERVIEW STATUS ────────────────────────────────
-exports.updateInterview = async (req, res) => {
+exports.updateInterview = async (req, res, next) => {
   const { id } = req.params;
   const { status, scheduled_at, type, location, notes } = req.body;
 
@@ -314,7 +314,7 @@ exports.updateInterview = async (req, res) => {
     .eq("id", id)
     .single();
 
-  if (fetchError) return res.status(500).json({ error: fetchError.message });
+  if (fetchError) return next(fetchError);
 
   const updateData = {};
   if (status) updateData.status = status;
@@ -330,7 +330,7 @@ exports.updateInterview = async (req, res) => {
     .select()
     .single();
 
-  if (error) return res.status(500).json({ error: error.message });
+  if (error) return next(error);
 
   // Trigger notifikasi hanya jika status benar-benar berubah
   if (status && status !== oldInterview.status) {
@@ -379,13 +379,13 @@ exports.updateInterview = async (req, res) => {
 };
 
 // ── GET MY INTERVIEWS (untuk kandidat yang login) ──────────
-exports.getMyInterviews = async (req, res) => {
+exports.getMyInterviews = async (req, res, next) => {
   const { data: applications, error: appError } = await supabase
     .from("applications")
     .select("id, job_id, jobs(title, company_id, companies(name))")
     .eq("candidate_id", req.user.id);
 
-  if (appError) return res.status(500).json({ error: appError.message });
+  if (appError) return next(appError);
   if (!applications || applications.length === 0) return res.json([]);
 
   const appIds = applications.map((a) => a.id);
@@ -396,7 +396,7 @@ exports.getMyInterviews = async (req, res) => {
     .in("application_id", appIds)
     .order("scheduled_at", { ascending: true });
 
-  if (error) return res.status(500).json({ error: error.message });
+  if (error) return next(error);
 
   const appMap = {};
   applications.forEach((a) => {

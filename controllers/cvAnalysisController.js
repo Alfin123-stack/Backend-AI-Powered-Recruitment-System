@@ -1,7 +1,7 @@
 const supabase = require("../config/supabase");
 
 // ── GET analisis CV terakhir milik user ───────────────────
-exports.getLatestAnalysis = async (req, res) => {
+exports.getLatestAnalysis = async (req, res, next) => {
   try {
     const { data, error } = await supabase
       .from("cv_analysis")
@@ -11,16 +11,16 @@ exports.getLatestAnalysis = async (req, res) => {
       .limit(1)
       .maybeSingle();
 
-    if (error) return res.status(500).json({ error: error.message });
+    if (error) return next(error);
 
     res.json(data || null);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    next(err);
   }
 };
 
 // ── SAVE hasil analisis CV ─────────────────────────────────
-exports.saveAnalysis = async (req, res) => {
+exports.saveAnalysis = async (req, res, next) => {
   try {
     const {
       resume_score,
@@ -67,10 +67,10 @@ exports.saveAnalysis = async (req, res) => {
       .select()
       .single();
 
-    if (error) return res.status(500).json({ error: error.message });
+    if (error) return next(error);
 
     res.status(201).json(data);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    next(err);
   }
 };

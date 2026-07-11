@@ -1,7 +1,7 @@
 const supabase = require("../config/supabase");
 
 // ── GET MY COMPANY ─────────────────────────────────────────
-exports.getMyCompany = async (req, res) => {
+exports.getMyCompany = async (req, res, next) => {
   try {
     const { data, error } = await supabase
       .from("companies")
@@ -13,16 +13,16 @@ exports.getMyCompany = async (req, res) => {
       return res.json(null);
     }
 
-    if (error) return res.status(500).json({ error: error.message });
+    if (error) return next(error);
 
     res.json(data);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    next(err);
   }
 };
 
 // ── CREATE COMPANY ─────────────────────────────────────────
-exports.createCompany = async (req, res) => {
+exports.createCompany = async (req, res, next) => {
   try {
     const { name, description, company_size } = req.body;
 
@@ -53,16 +53,16 @@ exports.createCompany = async (req, res) => {
       .select()
       .single();
 
-    if (error) return res.status(500).json({ error: error.message });
+    if (error) return next(error);
 
     res.status(201).json(data);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    next(err);
   }
 };
 
 // ── UPDATE COMPANY ─────────────────────────────────────────
-exports.updateCompany = async (req, res) => {
+exports.updateCompany = async (req, res, next) => {
   try {
     const { name, description, company_size } = req.body;
 
@@ -81,16 +81,16 @@ exports.updateCompany = async (req, res) => {
       .select()
       .single();
 
-    if (error) return res.status(500).json({ error: error.message });
+    if (error) return next(error);
 
     res.json(data);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    next(err);
   }
 };
 
 // ── GET PUBLIC COMPANIES ───────────────────────────────────
-exports.getPublicCompanies = async (req, res) => {
+exports.getPublicCompanies = async (req, res, next) => {
   try {
     const { data, error } = await supabase.from("companies").select(`
         id,
@@ -101,7 +101,7 @@ exports.getPublicCompanies = async (req, res) => {
         jobs(id, title, location, skills, is_active)
       `);
 
-    if (error) return res.status(500).json({ error: error.message });
+    if (error) return next(error);
 
     const result = data
       .map((c) => {
@@ -130,12 +130,12 @@ exports.getPublicCompanies = async (req, res) => {
 
     res.json(result);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    next(err);
   }
 };
 
 // ── GET COMPANY BY ID (public) ─────────────────────────────
-exports.getCompanyById = async (req, res) => {
+exports.getCompanyById = async (req, res, next) => {
   try {
     const { id } = req.params;
 
@@ -151,7 +151,7 @@ exports.getCompanyById = async (req, res) => {
     }
 
     if (companyError) {
-      return res.status(500).json({ error: companyError.message });
+      return next(companyError);
     }
 
     // Ambil semua jobs aktif milik company ini
@@ -165,7 +165,7 @@ exports.getCompanyById = async (req, res) => {
       .order("created_at", { ascending: false });
 
     if (jobsError) {
-      return res.status(500).json({ error: jobsError.message });
+      return next(jobsError);
     }
 
     const activeJobs = jobs || [];
@@ -188,6 +188,6 @@ exports.getCompanyById = async (req, res) => {
       jobs: activeJobs,
     });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    next(err);
   }
 };

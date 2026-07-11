@@ -1,7 +1,7 @@
 const supabase = require("../config/supabase");
 
 // ── GET semua saved jobs milik kandidat ───────────────────
-exports.getSavedJobs = async (req, res) => {
+exports.getSavedJobs = async (req, res, next) => {
   try {
     const { data, error } = await supabase
       .from("saved_jobs")
@@ -18,7 +18,7 @@ exports.getSavedJobs = async (req, res) => {
       .eq("candidate_id", req.user.id)
       .order("created_at", { ascending: false });
 
-    if (error) return res.status(500).json({ error: error.message });
+    if (error) return next(error);
 
     const result = data.map((s) => ({
       saved_id: s.id,
@@ -28,12 +28,12 @@ exports.getSavedJobs = async (req, res) => {
 
     res.json(result);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    next(err);
   }
 };
 
 // ── SAVE job ──────────────────────────────────────────────
-exports.saveJob = async (req, res) => {
+exports.saveJob = async (req, res, next) => {
   try {
     const { job_id } = req.body;
     if (!job_id) return res.status(400).json({ error: "job_id wajib diisi" });
@@ -54,16 +54,16 @@ exports.saveJob = async (req, res) => {
       .select()
       .single();
 
-    if (error) return res.status(500).json({ error: error.message });
+    if (error) return next(error);
 
     res.status(201).json(data);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    next(err);
   }
 };
 
 // ── UNSAVE job ────────────────────────────────────────────
-exports.unsaveJob = async (req, res) => {
+exports.unsaveJob = async (req, res, next) => {
   try {
     const { job_id } = req.params;
 
@@ -73,16 +73,16 @@ exports.unsaveJob = async (req, res) => {
       .eq("candidate_id", req.user.id)
       .eq("job_id", job_id);
 
-    if (error) return res.status(500).json({ error: error.message });
+    if (error) return next(error);
 
     res.json({ success: true });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    next(err);
   }
 };
 
 // ── CEK apakah job sudah disave ───────────────────────────
-exports.checkSaved = async (req, res) => {
+exports.checkSaved = async (req, res, next) => {
   try {
     const { job_id } = req.params;
 
@@ -95,6 +95,6 @@ exports.checkSaved = async (req, res) => {
 
     res.json({ saved: !!data });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    next(err);
   }
 };

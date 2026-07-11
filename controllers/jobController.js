@@ -25,7 +25,7 @@ function pickUpdatableFields(body) {
 }
 
 // ── CREATE JOB ─────────────────────────────────────────────
-exports.createJob = async (req, res) => {
+exports.createJob = async (req, res, next) => {
   try {
     const {
       title,
@@ -76,16 +76,16 @@ exports.createJob = async (req, res) => {
       .select()
       .single();
 
-    if (error) return res.status(500).json({ error: error.message });
+    if (error) return next(error);
 
     res.status(201).json(data);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    next(err);
   }
 };
 
 // ── GET ALL JOBS (public) ───────────────────────────────────
-exports.getJobs = async (req, res) => {
+exports.getJobs = async (req, res, next) => {
   try {
     const { data, error } = await supabase
       .from("jobs")
@@ -98,16 +98,16 @@ exports.getJobs = async (req, res) => {
       .eq("is_active", true)
       .order("created_at", { ascending: false });
 
-    if (error) return res.status(500).json({ error: error.message });
+    if (error) return next(error);
 
     res.json(data);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    next(err);
   }
 };
 
 // ── UPDATE JOB ─────────────────────────────────────────────
-exports.updateJob = async (req, res) => {
+exports.updateJob = async (req, res, next) => {
   try {
     const { id } = req.params;
 
@@ -136,16 +136,16 @@ exports.updateJob = async (req, res) => {
       .select()
       .single();
 
-    if (error) return res.status(500).json({ error: error.message });
+    if (error) return next(error);
 
     res.json(data);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    next(err);
   }
 };
 
 // ── DELETE JOB (soft delete) ───────────────────────────────
-exports.deleteJob = async (req, res) => {
+exports.deleteJob = async (req, res, next) => {
   try {
     const { id } = req.params;
 
@@ -164,16 +164,16 @@ exports.deleteJob = async (req, res) => {
       .eq("id", id)
       .eq("company_id", company.id);
 
-    if (error) return res.status(500).json({ error: error.message });
+    if (error) return next(error);
 
     res.json({ message: "Lowongan berhasil ditutup" });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    next(err);
   }
 };
 
 // ── GET MY JOBS (HR only) ──────────────────────────────────
-exports.getMyJobs = async (req, res) => {
+exports.getMyJobs = async (req, res, next) => {
   try {
     const { data: company } = await supabase
       .from("companies")
@@ -189,16 +189,16 @@ exports.getMyJobs = async (req, res) => {
       .eq("company_id", company.id)
       .order("created_at", { ascending: false });
 
-    if (error) return res.status(500).json({ error: error.message });
+    if (error) return next(error);
 
     res.json(data);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    next(err);
   }
 };
 
 // ── GET JOB BY ID (public) ─────────────────────────────────
-exports.getJobById = async (req, res) => {
+exports.getJobById = async (req, res, next) => {
   try {
     const { id } = req.params
 
@@ -216,10 +216,10 @@ exports.getJobById = async (req, res) => {
       return res.status(404).json({ error: "Lowongan tidak ditemukan" })
     }
 
-    if (error) return res.status(500).json({ error: error.message })
+    if (error) return next(error)
 
     res.json(data)
   } catch (err) {
-    res.status(500).json({ error: err.message })
+    next(err)
   }
 }
