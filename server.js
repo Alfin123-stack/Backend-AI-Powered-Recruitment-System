@@ -5,6 +5,9 @@ const express = require("express");
 const cors = require("cors");
 const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
+const hpp = require("hpp");
+const sanitize = require("./middleware/sanitize");
+const { aiLimiter } = require("./middleware/rateLimiters");
 
 const jobRoutes = require("./routes/jobRoutes");
 const aiRoutes = require("./routes/aiRoutes");
@@ -54,6 +57,13 @@ app.use(
 
 app.use(express.json());
 
+// FIX (security): cegah HTTP Parameter Pollution, misal ?status=a&status=b
+app.use(hpp());
+
+// FIX (security): sanitasi XSS untuk semua field string di body (defense-in-depth,
+// selain validasi Zod yang sudah membatasi field & tipe data)
+app.use(sanitize);
+
 // ======================
 // RATE LIMIT
 // ======================
@@ -68,13 +78,7 @@ app.use(limiter);
 
 // FIX (security): limit lebih ketat khusus endpoint yang manggil Gemini AI
 // (biaya per-request + rawan disalahgunakan untuk membakar kuota API).
-const aiLimiter = rateLimit({
-  windowMs: 60 * 1000,
-  max: 10,
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: { error: "Terlalu banyak request AI, coba lagi sebentar lagi." },
-});
+// Implementasi lengkap (Upstash + fallback) ada di middleware/rateLimiters.js
 app.use("/api/ai", aiLimiter);
 app.use("/api/chat", aiLimiter);
 app.use("/api/cv-analysis", aiLimiter);

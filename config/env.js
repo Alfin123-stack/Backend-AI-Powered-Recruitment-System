@@ -12,6 +12,10 @@ const env = cleanEnv(process.env, {
   OFFER_TOKEN_SECRET: str(),
   PORT: port({ default: 3000 }),
   FRONTEND_URLS: str({ default: "" }),
+  // Opsional -- kalau kosong, rate limiter AI otomatis fallback ke in-memory
+  // (lihat middleware/rateLimiters.js). Wajib diisi sebelum production di Vercel.
+  UPSTASH_REDIS_REST_URL: str({ default: "" }),
+  UPSTASH_REDIS_REST_TOKEN: str({ default: "" }),
 });
 
 module.exports = env;
