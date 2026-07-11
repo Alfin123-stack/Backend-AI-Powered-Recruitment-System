@@ -8,12 +8,13 @@ const {
 } = require("../controllers/interviewController");
 
 const authMiddleware = require("../middleware/authMiddleware");
+const checkRole = require("../middleware/roleMiddleware");
 
 // Semua route butuh auth
-router.get("/", authMiddleware, getHRInterviews); // semua interview milik HR
-router.get("/shortlisted", authMiddleware, getShortlistedCandidates); // kandidat shortlisted belum dijadwalkan
-router.post("/", authMiddleware, createInterview); // buat jadwal interview
-router.get("/my", authMiddleware, getMyInterviews); // jadwal interview kandidat
-router.put("/:id", authMiddleware, updateInterview); // update status/detail interview
+router.get("/", authMiddleware, checkRole("hr"), getHRInterviews); // semua interview milik HR
+router.get("/shortlisted", authMiddleware, checkRole("hr"), getShortlistedCandidates); // kandidat shortlisted belum dijadwalkan
+router.post("/", authMiddleware, checkRole("hr"), createInterview); // buat jadwal interview
+router.get("/my", authMiddleware, getMyInterviews); // jadwal interview kandidat (candidate)
+router.put("/:id", authMiddleware, checkRole("hr"), updateInterview); // update status/detail interview
 
 module.exports = router;

@@ -1,4 +1,5 @@
 require("dotenv").config();
+require("./config/env"); // validasi env wajib -- app gagal start kalau ada yang kosong
 
 const express = require("express");
 const cors = require("cors");
@@ -18,20 +19,65 @@ const evaluationRoutes = require("./routes/evaluationRoutes");
 const app = express();
 
 // ======================
+// TRUST PROXY
+// ======================
+// FIX (security): wajib di-set karena app ini jalan di belakang proxy
+// (Vercel). Tanpa ini, express-rate-limit & req.ip bisa salah baca IP asli
+// client (semua request dianggap dari 1 IP yang sama = rate limit rusak).
+app.set("trust proxy", 1);
+
+// ======================
 // MIDDLEWARE GLOBAL
 // ======================
 app.use(helmet());
-app.use(cors({ origin: "*" }));
+
+// FIX (security): CORS sebelumnya origin: "*" (izinkan domain manapun).
+// Sekarang di-whitelist ke domain frontend yang memang butuh akses.
+// Tambahkan domain lain lewat env FRONTEND_URLS (pisah koma) kalau perlu,
+// misal untuk preview deployment Vercel.
+const allowedOrigins = [
+  "http://localhost:3000",
+  ...(process.env.FRONTEND_URLS ? process.env.FRONTEND_URLS.split(",").map((s) => s.trim()) : []),
+];
+
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      // origin undefined = request tanpa header Origin (server-to-server, curl, Postman) — izinkan
+      if (!origin || allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+      return callback(new Error("Not allowed by CORS"));
+    },
+  }),
+);
+
 app.use(express.json());
 
 // ======================
 // RATE LIMIT
 // ======================
+// Limit umum untuk semua endpoint
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 100,
+  standardHeaders: true,
+  legacyHeaders: false,
 });
 app.use(limiter);
+
+// FIX (security): limit lebih ketat khusus endpoint yang manggil Gemini AI
+// (biaya per-request + rawan disalahgunakan untuk membakar kuota API).
+const aiLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Terlalu banyak request AI, coba lagi sebentar lagi." },
+});
+app.use("/api/ai", aiLimiter);
+app.use("/api/chat", aiLimiter);
+app.use("/api/cv-analysis", aiLimiter);
 
 // ======================
 // TEST ROUTE

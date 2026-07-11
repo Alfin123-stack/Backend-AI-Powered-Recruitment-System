@@ -1,5 +1,29 @@
 const supabase = require("../config/supabase");
 
+// ── FIELD YANG BOLEH DIUBAH LEWAT updateJob (whitelist, cegah mass assignment) ──
+const JOB_UPDATABLE_FIELDS = [
+  "title",
+  "description",
+  "requirements",
+  "salary",
+  "location",
+  "type",
+  "skills",
+  "benefits",
+  "deadline",
+  "is_active",
+];
+
+function pickUpdatableFields(body) {
+  const result = {};
+  for (const key of JOB_UPDATABLE_FIELDS) {
+    if (Object.prototype.hasOwnProperty.call(body, key)) {
+      result[key] = body[key];
+    }
+  }
+  return result;
+}
+
 // ── CREATE JOB ─────────────────────────────────────────────
 exports.createJob = async (req, res) => {
   try {
@@ -96,9 +120,17 @@ exports.updateJob = async (req, res) => {
 
     if (!company) return res.status(403).json({ error: "Forbidden" });
 
+    // FIX (security): jangan pernah update(req.body) mentah — mass assignment.
+    // Hanya field di JOB_UPDATABLE_FIELDS yang boleh diubah lewat endpoint ini.
+    const updates = pickUpdatableFields(req.body);
+
+    if (Object.keys(updates).length === 0) {
+      return res.status(400).json({ error: "Tidak ada field valid untuk diupdate" });
+    }
+
     const { data, error } = await supabase
       .from("jobs")
-      .update(req.body)
+      .update(updates)
       .eq("id", id)
       .eq("company_id", company.id) // double check ownership
       .select()
@@ -164,7 +196,6 @@ exports.getMyJobs = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
-
 
 // ── GET JOB BY ID (public) ─────────────────────────────────
 exports.getJobById = async (req, res) => {

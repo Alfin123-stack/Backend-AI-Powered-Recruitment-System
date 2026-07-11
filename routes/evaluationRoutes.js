@@ -4,8 +4,9 @@ const {
   getEvaluationsByApplication,
 } = require("../controllers/evaluationController");
 const authMiddleware = require("../middleware/authMiddleware");
+const checkRole = require("../middleware/roleMiddleware");
 
-router.post("/", authMiddleware, createEvaluation); // HR simpan evaluasi
+router.post("/", authMiddleware, checkRole("hr"), createEvaluation); // HR simpan evaluasi
 router.get("/application/:applicationId", authMiddleware, getEvaluationsByApplication); // HR & candidate lihat
 
 module.exports = router;
