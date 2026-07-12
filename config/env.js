@@ -14,8 +14,13 @@ const env = cleanEnv(process.env, {
   FRONTEND_URLS: str({ default: "" }),
   // Opsional -- kalau kosong, rate limiter AI otomatis fallback ke in-memory
   // (lihat middleware/rateLimiters.js). Wajib diisi sebelum production di Vercel.
+  // UPSTASH_REDIS_REST_URL/TOKEN kalau bikin database manual di upstash.com,
+  // KV_REST_API_URL/KV_REST_API_TOKEN kalau connect lewat Vercel Marketplace
+  // (nama env ini otomatis dikasih Vercel, bukan yang kita pilih sendiri).
   UPSTASH_REDIS_REST_URL: str({ default: "" }),
   UPSTASH_REDIS_REST_TOKEN: str({ default: "" }),
+  KV_REST_API_URL: str({ default: "" }),
+  KV_REST_API_TOKEN: str({ default: "" }),
 });
 
 module.exports = env;

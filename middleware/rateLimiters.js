@@ -15,16 +15,23 @@ const logger = require("../utils/logger");
 
 let aiLimiter;
 
-const hasUpstashConfig =
-  process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN;
+// Dukung 2 sumber penamaan env:
+// 1. UPSTASH_REDIS_REST_URL/TOKEN -- kalau bikin database manual di upstash.com
+// 2. KV_REST_API_URL/KV_REST_API_TOKEN -- kalau connect lewat Vercel
+//    Marketplace (Storage tab di Vercel dashboard), ini nama default yang
+//    dikasih Vercel begitu integrasi Upstash di-attach ke project.
+const REDIS_URL = process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL;
+const REDIS_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN;
+
+const hasUpstashConfig = REDIS_URL && REDIS_TOKEN;
 
 if (hasUpstashConfig) {
   const { Ratelimit } = require("@upstash/ratelimit");
   const { Redis } = require("@upstash/redis");
 
   const redis = new Redis({
-    url: process.env.UPSTASH_REDIS_REST_URL,
-    token: process.env.UPSTASH_REDIS_REST_TOKEN,
+    url: REDIS_URL,
+    token: REDIS_TOKEN,
   });
 
   const limiter = new Ratelimit({
