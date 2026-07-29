@@ -1,12 +1,8 @@
-// Custom error classes -- controller/service bisa `throw new NotFoundError(...)`
-// dkk, lalu errorHandler.js akan otomatis pakai statusCode & message yang
-// AMAN untuk dikirim ke client (bukan `err.message` mentah dari Supabase/Postgres).
-
 class AppError extends Error {
   constructor(message, statusCode = 500) {
     super(message);
     this.statusCode = statusCode;
-    this.isOperational = true; // error yang "terduga" (business logic), aman ditampilkan ke user
+    this.isOperational = true;
     Error.captureStackTrace(this, this.constructor);
   }
 }
